@@ -26,7 +26,7 @@ from utils.visualization import (
     generate_correlation_heatmap, generate_confidence_distribution,
 )
 from utils.news_fetcher import (
-    fetch_financial_news, get_stock_sectors_summary,
+    fetch_sample_news, fetch_real_news, get_stock_sectors_summary,
 )
 
 app = Flask(__name__)
@@ -187,22 +187,13 @@ def api_model_metadata():
     return jsonify(metadata)
 
 
-# ==================== API: 实时新闻 ====================
+# ==================== API: 新闻 ====================
 
-@app.route('/api/news/realtime')
-def api_news_realtime():
-    """获取实时金融新闻并进行情感分析"""
-    source = request.args.get('source', 'all')
-    limit = request.args.get('limit', 30, type=int)
-
-    # 获取新闻
-    news_list = fetch_financial_news(source=source, limit=limit)
-
-    # 对每条新闻进行情感分析
+def _analyze_news(news_list):
+    """对新闻列表进行情感分析，返回分析后的新闻列表和汇总数据"""
     titles = [n['title'] for n in news_list]
     results = predictor.predict_batch(titles)
 
-    # 合并新闻和预测结果
     for i, news in enumerate(news_list):
         if i < len(results):
             news['sentiment'] = results[i]['sentiment']
@@ -214,49 +205,68 @@ def api_news_realtime():
             news['prob_negative'] = results[i]['prob_negative']
         else:
             news['sentiment'] = 'neutral'
-            news['sentiment_zh'] = '⚪ 中性'
+            news['sentiment_zh'] = '中性'
             news['confidence'] = 0.5
             news['signal'] = 'neutral'
-            news['signal_zh'] = '⚪ 中性'
+            news['signal_zh'] = '中性'
 
-    # 汇总统计
     positive_count = sum(1 for n in news_list if n.get('sentiment') == 'positive')
     negative_count = sum(1 for n in news_list if n.get('sentiment') == 'negative')
 
     if len(news_list) > 0:
         sentiment_ratio = (positive_count - negative_count) / len(news_list)
         if sentiment_ratio > 0.2:
-            market_signal = '🟢 看多信号'
-            market_signal_en = 'bullish'
+            market_signal, market_signal_en = '看多', 'bullish'
         elif sentiment_ratio < -0.2:
-            market_signal = '🔴 看空信号'
-            market_signal_en = 'bearish'
+            market_signal, market_signal_en = '看空', 'bearish'
         else:
-            market_signal = '⚪ 中性震荡'
-            market_signal_en = 'neutral'
+            market_signal, market_signal_en = '中性', 'neutral'
     else:
         sentiment_ratio = 0
-        market_signal = '⚪ 暂无数据'
-        market_signal_en = 'none'
+        market_signal, market_signal_en = '暂无数据', 'none'
 
-    return jsonify({
-        'news': news_list,
+    return news_list, {
         'total': len(news_list),
         'positive_count': positive_count,
         'negative_count': negative_count,
         'sentiment_ratio': round(sentiment_ratio, 3),
         'market_signal': market_signal,
         'market_signal_en': market_signal_en,
+    }
+
+
+@app.route('/api/news/sample')
+def api_news_sample():
+    """获取样例新闻（基于本地数据集）"""
+    limit = request.args.get('limit', 30, type=int)
+    news_list = fetch_sample_news(limit=limit)
+    news_list, summary = _analyze_news(news_list)
+    sectors = get_stock_sectors_summary(news_list)
+
+    return jsonify({
+        'source': 'sample',
         'fetch_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'source': source,
+        'news': news_list,
+        'sectors': sectors,
+        **summary,
     })
 
 
-@app.route('/api/news/sectors')
-def api_news_sectors():
-    """获取各板块情绪汇总"""
-    data = get_stock_sectors_summary()
-    return jsonify(data)
+@app.route('/api/news/realtime')
+def api_news_realtime():
+    """获取真实实时金融新闻（新浪财经）"""
+    limit = request.args.get('limit', 30, type=int)
+    news_list = fetch_real_news(limit=limit)
+    news_list, summary = _analyze_news(news_list)
+    sectors = get_stock_sectors_summary(news_list)
+
+    return jsonify({
+        'source': 'realtime',
+        'fetch_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'news': news_list,
+        'sectors': sectors,
+        **summary,
+    })
 
 
 # ==================== API: 批量文件分析 ====================

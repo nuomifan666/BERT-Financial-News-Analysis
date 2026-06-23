@@ -262,52 +262,108 @@ async function doBatchPredict() {
 
 // ==================== 实时新闻 ====================
 
-async function fetchRealtimeNews(source) {
-    const newsList = document.getElementById('newsList');
-    newsList.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p class="mt-2">正在获取实时新闻...</p></div>';
+// ==================== 样例新闻 & 热点新闻 ====================
+
+async function fetchSampleNews() {
+    await loadNewsTab('sample');
+}
+
+async function fetchRealNews() {
+    await loadNewsTab('realtime');
+}
+
+async function loadNewsTab(mode) {
+    const isRealtime = mode === 'realtime';
+    const prefix = isRealtime ? 'real' : 'sample';
+
+    // Loading state
+    const listEl = document.getElementById(prefix + 'NewsList');
+    if (listEl) listEl.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p class="mt-2">加载中...</p></div>';
 
     try {
-        const res = await fetch(`/api/news/realtime?source=${source}&limit=40`);
+        const endpoint = isRealtime ? '/api/news/realtime' : '/api/news/sample';
+        const res = await fetch(`${endpoint}?limit=30`);
         const data = await res.json();
 
         // 更新时间
-        document.getElementById('newsFetchTime').textContent =
-            '获取时间: ' + data.fetch_time + ' | 来源: ' + source;
+        const timeEl = document.getElementById(prefix + 'FetchTime');
+        if (timeEl) timeEl.textContent = '获取时间: ' + data.fetch_time;
 
-        // 市场信号
-        const signalIcon = document.getElementById('marketSignalIcon');
-        const signalText = document.getElementById('marketSignalText');
-
-        if (data.market_signal_en === 'bullish') {
-            signalIcon.textContent = '🟢';
-            signalIcon.className = 'pulse-green';
-        } else if (data.market_signal_en === 'bearish') {
-            signalIcon.textContent = '🔴';
-            signalIcon.className = 'pulse-red';
-        } else {
-            signalIcon.textContent = '⚪';
-            signalIcon.className = '';
+        // 信号
+        const iconEl = document.getElementById(prefix + 'SignalIcon');
+        const textEl = document.getElementById(prefix + 'SignalText');
+        if (iconEl && textEl) {
+            if (data.market_signal_en === 'bullish') {
+                iconEl.textContent = '🔴'; iconEl.className = 'pulse-red';
+            } else if (data.market_signal_en === 'bearish') {
+                iconEl.textContent = '🟢'; iconEl.className = 'pulse-green';
+            } else {
+                iconEl.textContent = '⚪'; iconEl.className = '';
+            }
+            textEl.textContent = data.market_signal;
         }
-        signalText.textContent = data.market_signal;
 
-        // 统计
-        document.getElementById('positiveNewsCount').textContent = data.positive_count;
-        document.getElementById('negativeNewsCount').textContent = data.negative_count;
-        document.getElementById('newsTotalBadge').textContent = data.total;
+        // 统计 (红正绿负)
+        const posEl = document.getElementById(prefix + 'PosCount');
+        const negEl = document.getElementById(prefix + 'NegCount');
+        if (posEl) posEl.textContent = data.positive_count;
+        if (negEl) negEl.textContent = data.negative_count;
+
+        // 新闻总数
+        const totalEl = document.getElementById(prefix + 'TotalBadge');
+        if (totalEl) totalEl.textContent = data.total;
 
         // 新闻列表
-        renderNewsList(data.news);
+        renderNewsListTo(prefix + 'NewsList', data.news);
 
         // 情绪趋势图
-        renderSentimentTrend(data.news);
+        renderSentimentTrendTo(prefix + 'TrendChart', data.news);
+
+        // 板块情绪图
+        if (data.sectors && data.sectors.length > 0) {
+            renderSectorChartTo(prefix + 'SectorChart', data.sectors);
+        }
 
     } catch (e) {
-        newsList.innerHTML = '<p class="text-danger text-center">获取新闻失败: ' + e.message + '</p>';
+        if (listEl) listEl.innerHTML = '<p class="text-danger text-center">获取失败: ' + e.message + '</p>';
     }
 }
 
-function renderNewsList(news) {
-    const container = document.getElementById('newsList');
+function renderSectorChartTo(domId, sectors) {
+    const chartDom = document.getElementById(domId);
+    if (!chartDom) return;
+    const chart = echarts.init(chartDom);
+
+    const names = sectors.map(d => d.sector);
+    const scores = sectors.map(d => d.sentiment_score);
+
+    chart.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: {
+            type: 'category', data: names,
+            axisLabel: { rotate: 45, color: '#5a6b7c', fontSize: 10 }
+        },
+        yAxis: {
+            type: 'value', name: '情绪得分',
+            axisLabel: { color: '#5a6b7c' },
+            splitLine: { lineStyle: { color: '#e2e8f0' } }
+        },
+        series: [{
+            type: 'bar',
+            data: scores.map(v => ({
+                value: v,
+                itemStyle: { color: v > 0.2 ? '#ef4444' : v < -0.2 ? '#10b981' : '#f59e0b' }
+            })),
+            barWidth: '60%'
+        }]
+    });
+    window.addEventListener('resize', () => chart.resize());
+}
+
+function renderNewsListTo(domId, news) {
+    const container = document.getElementById(domId);
+    if (!container) return;
     container.innerHTML = news.map(n => `
         <div class="news-item ${n.sentiment}">
             <div class="d-flex justify-content-between align-items-start">
@@ -315,10 +371,10 @@ function renderNewsList(news) {
                     <span class="tag tag-${n.sentiment} me-2">${n.sentiment_zh}</span>
                     <span>${n.title}</span>
                 </div>
-                <div class="text-end ms-2" style="min-width:120px;">
+                <div class="text-end ms-2" style="min-width:110px;">
                     <small class="text-muted">${n.time || ''}</small><br/>
-                    <small class="text-muted">${n.source || ''}</small><br/>
-                    <span class="badge ${n.sentiment === 'positive' ? 'bg-success' : n.sentiment === 'negative' ? 'bg-danger' : 'bg-secondary'}">
+                    <small class="text-muted">${n.source || ''}</small>
+                    <span class="badge ms-1 ${n.sentiment === 'positive' ? 'bg-danger' : n.sentiment === 'negative' ? 'bg-success' : 'bg-secondary'}">
                         ${(n.confidence * 100).toFixed(0)}%
                     </span>
                 </div>
@@ -327,17 +383,14 @@ function renderNewsList(news) {
     `).join('');
 }
 
-function renderSentimentTrend(news) {
-    const chartDom = document.getElementById('sentimentTrendChart');
+function renderSentimentTrendTo(domId, news) {
+    const chartDom = document.getElementById(domId);
+    if (!chartDom) return;
     const chart = echarts.init(chartDom);
 
-    // 按时间排序，构建累计趋势
     const sorted = [...news].reverse();
     let cumPos = 0, cumNeg = 0;
-    const times = [];
-    const posData = [];
-    const negData = [];
-    const netData = [];
+    const times = [], posData = [], negData = [], netData = [];
 
     sorted.forEach((n, i) => {
         if (n.sentiment === 'positive') cumPos++;
@@ -348,88 +401,22 @@ function renderSentimentTrend(news) {
         netData.push(cumPos - cumNeg);
     });
 
-    const option = {
+    chart.setOption({
         tooltip: { trigger: 'axis' },
         legend: {
             data: ['累计积极', '累计消极', '净情绪'],
-            textStyle: { color: '#94a3b8' }
+            textStyle: { color: '#5a6b7c' }
         },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: {
-            type: 'category',
-            data: times,
-            name: '新闻序号',
-            axisLabel: { color: '#94a3b8' }
-        },
-        yAxis: {
-            type: 'value',
-            axisLabel: { color: '#94a3b8' },
-            splitLine: { lineStyle: { color: '#e2e8f0' } }
-        },
+        xAxis: { type: 'category', data: times, name: '新闻序号', axisLabel: { color: '#5a6b7c' } },
+        yAxis: { type: 'value', axisLabel: { color: '#5a6b7c' }, splitLine: { lineStyle: { color: '#e2e8f0' } } },
         series: [
-            {
-                name: '累计积极', type: 'line', data: posData,
-                lineStyle: { color: '#10b981', width: 2 },
-                areaStyle: { color: 'rgba(16, 185, 129, 0.15)' }
-            },
-            {
-                name: '累计消极', type: 'line', data: negData,
-                lineStyle: { color: '#ef4444', width: 2 },
-                areaStyle: { color: 'rgba(239, 68, 68, 0.15)' }
-            },
-            {
-                name: '净情绪', type: 'line', data: netData,
-                lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' }
-            }
+            { name: '累计积极', type: 'line', data: posData, lineStyle: { color: '#ef4444', width: 2 }, areaStyle: { color: 'rgba(239,68,68,0.15)' } },
+            { name: '累计消极', type: 'line', data: negData, lineStyle: { color: '#10b981', width: 2 }, areaStyle: { color: 'rgba(16,185,129,0.15)' } },
+            { name: '净情绪', type: 'line', data: netData, lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' } }
         ]
-    };
-
-    chart.setOption(option);
+    });
     window.addEventListener('resize', () => chart.resize());
-}
-
-async function fetchSectorData() {
-    try {
-        const res = await fetch('/api/news/sectors');
-        const data = await res.json();
-
-        const chartDom = document.getElementById('sectorChart');
-        const chart = echarts.init(chartDom);
-
-        const sectors = data.map(d => d.sector);
-        const scores = data.map(d => d.sentiment_score);
-
-        const option = {
-            tooltip: { trigger: 'axis' },
-            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-            xAxis: {
-                type: 'category',
-                data: sectors,
-                axisLabel: { rotate: 45, color: '#94a3b8', fontSize: 10 }
-            },
-            yAxis: {
-                type: 'value',
-                name: '情绪得分',
-                axisLabel: { color: '#94a3b8' },
-                splitLine: { lineStyle: { color: '#e2e8f0' } }
-            },
-            series: [{
-                type: 'bar',
-                data: scores.map((v, i) => ({
-                    value: v,
-                    itemStyle: {
-                        color: v > 0.2 ? '#ef4444' : v < -0.2 ? '#10b981' : '#f59e0b'
-                    }
-                })),
-                barWidth: '60%'
-            }]
-        };
-
-        chart.setOption(option);
-        window.addEventListener('resize', () => chart.resize());
-    } catch (e) {
-        console.error('板块数据加载失败:', e);
-    }
 }
 
 // ==================== 文件上传 ====================

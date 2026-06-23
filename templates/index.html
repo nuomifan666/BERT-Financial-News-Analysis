@@ -32,12 +32,17 @@
         <ul class="nav nav-tabs custom-tabs" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-predict">
-                    <i class="bi bi-lightning-charge"></i> 实时预测
+                    <i class="bi bi-lightning-charge"></i> 情感预测
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-sample-news">
+                    <i class="bi bi-collection"></i> 样例数据
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-realtime-news">
-                    <i class="bi bi-newspaper"></i> 实时新闻
+                    <i class="bi bi-rss"></i> 热点新闻
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -157,87 +162,80 @@
                 </div>
             </div>
 
-            <!-- ========== Tab 2: 实时新闻 ========== -->
-            <div class="tab-pane fade" id="tab-realtime-news">
+            <!-- ========== Tab 2: 样例数据 ========== -->
+            <div class="tab-pane fade" id="tab-sample-news">
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h4 class="mb-0"><i class="bi bi-newspaper"></i> 实时金融新闻情感分析</h4>
-                                    <small id="newsFetchTime" class="text-muted"></small>
+                                    <h4 class="mb-0"><i class="bi bi-collection"></i> 样例新闻数据</h4>
+                                    <small id="sampleFetchTime" class="text-muted">基于本地数据集生成的金融新闻样例</small>
                                 </div>
                                 <div>
-                                    <button class="btn btn-primary" onclick="fetchRealtimeNews('all')">
-                                        <i class="bi bi-arrow-repeat"></i> 刷新新闻
+                                    <button class="btn btn-outline-primary" onclick="fetchSampleNews()">
+                                        <i class="bi bi-arrow-repeat"></i> 刷新
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 市场情绪总览 -->
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h1 id="marketSignalIcon">⏳</h1>
-                                <h4 id="marketSignalText">加载中...</h4>
-                                <small class="text-muted">市场情绪信号</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h1 class="text-success" id="positiveNewsCount">-</h1>
-                                <small class="text-muted">积极新闻数量</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card text-center">
-                            <div class="card-body">
-                                <h1 class="text-danger" id="negativeNewsCount">-</h1>
-                                <small class="text-muted">消极新闻数量</small>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h1 id="sampleSignalIcon">-</h1><h5 id="sampleSignalText">-</h5><small class="text-muted">情绪信号</small>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h2 class="text-danger" id="samplePosCount">-</h2><small class="text-muted">积极</small>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h2 class="text-success" id="sampleNegCount">-</h2><small class="text-muted">消极</small>
+                    </div></div></div>
                 </div>
-
-                <!-- 板块情绪 -->
                 <div class="row mb-3">
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header">板块情绪热力</div>
-                            <div class="card-body">
-                                <div id="sectorChart" style="height:400px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="card">
-                            <div class="card-header">市场情绪趋势</div>
-                            <div class="card-body">
-                                <div id="sentimentTrendChart" style="height:400px;"></div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="col-lg-6"><div class="card"><div class="card-header">板块情绪</div><div class="card-body"><div id="sampleSectorChart" style="height:350px;"></div></div></div></div>
+                    <div class="col-lg-6"><div class="card"><div class="card-header">情绪趋势</div><div class="card-body"><div id="sampleTrendChart" style="height:350px;"></div></div></div></div>
                 </div>
+                <div class="card"><div class="card-header">新闻列表 <span class="badge bg-primary ms-2" id="sampleTotalBadge">0</span></div>
+                <div class="card-body" style="max-height:500px;overflow-y:auto;" id="sampleNewsList"><p class="text-muted text-center">点击刷新加载样例数据...</p></div></div>
+            </div>
 
-                <!-- 新闻列表 -->
-                <div class="card">
-                    <div class="card-header">
-                        新闻列表
-                        <span class="badge bg-primary ms-2" id="newsTotalBadge">0</span>
-                    </div>
-                    <div class="card-body" style="max-height:600px;overflow-y:auto;">
-                        <div id="newsList">
-                            <p class="text-muted text-center">点击"刷新"获取实时新闻...</p>
+            <!-- ========== Tab 3: 热点新闻 ========== -->
+            <div class="tab-pane fade" id="tab-realtime-news">
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="mb-0"><i class="bi bi-rss"></i> 热点新闻情感分析</h4>
+                                    <small id="realFetchTime" class="text-muted">抓取自新浪财经实时新闻</small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-primary" onclick="fetchRealNews()">
+                                        <i class="bi bi-arrow-repeat"></i> 刷新热点新闻
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+                <div class="row mb-3">
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h1 id="realSignalIcon">-</h1><h5 id="realSignalText">-</h5><small class="text-muted">情绪信号</small>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h2 class="text-danger" id="realPosCount">-</h2><small class="text-muted">积极</small>
+                    </div></div></div>
+                    <div class="col-md-4"><div class="card text-center"><div class="card-body">
+                        <h2 class="text-success" id="realNegCount">-</h2><small class="text-muted">消极</small>
+                    </div></div></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-lg-6"><div class="card"><div class="card-header">板块情绪</div><div class="card-body"><div id="realSectorChart" style="height:350px;"></div></div></div></div>
+                    <div class="col-lg-6"><div class="card"><div class="card-header">情绪趋势</div><div class="card-body"><div id="realTrendChart" style="height:350px;"></div></div></div></div>
+                </div>
+                <div class="card"><div class="card-header">新闻列表 <span class="badge bg-primary ms-2" id="realTotalBadge">0</span></div>
+                <div class="card-body" style="max-height:500px;overflow-y:auto;" id="realNewsList"><p class="text-muted text-center">点击刷新获取实时热点新闻...</p></div></div>
             </div>
 
             <!-- ========== Tab 3: 数据看板 ========== -->
@@ -509,9 +507,10 @@
                     loadDatasetPage(1);
                 } else if (target === '#tab-model') {
                     loadModelInfo();
+                } else if (target === '#tab-sample-news') {
+                    fetchSampleNews();
                 } else if (target === '#tab-realtime-news') {
-                    fetchRealtimeNews('all');
-                    fetchSectorData();
+                    fetchRealNews();
                 }
             });
         });
