@@ -342,7 +342,7 @@ function renderSectorChartTo(domId, sectors) {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category', data: names,
-            axisLabel: { rotate: 45, color: '#5a6b7c', fontSize: 10 }
+            axisLabel: { rotate: 45, color: '#5a6b7c', fontSize: 12 }
         },
         yAxis: {
             type: 'value', name: '情绪得分',
