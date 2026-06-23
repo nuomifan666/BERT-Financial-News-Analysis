@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# Model files (too large for GitHub)
+model/saved/
+model/results/
+
+# Conda environment
+D:/conda_envs/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+static/downloads/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BERT 金融新闻情感分析系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-graph-up-arrow"></i>
+                <span class="brand-text">BERT 金融新闻情感分析系统</span>
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-item nav-link" id="modelStatus">
+                    <i class="bi bi-circle-fill text-warning"></i> 模型加载中...
+                </span>
+                <span class="nav-item nav-link" id="currentTime"></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab 导航 -->
+    <div class="container-fluid mt-3">
+        <ul class="nav nav-tabs custom-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-predict">
+                    <i class="bi bi-lightning-charge"></i> 实时预测
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-realtime-news">
+                    <i class="bi bi-newspaper"></i> 实时新闻
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dashboard">
+                    <i class="bi bi-speedometer2"></i> 数据看板
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-training">
+                    <i class="bi bi-graph-up"></i> 训练历程
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dataset">
+                    <i class="bi bi-database"></i> 数据集
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-upload">
+                    <i class="bi bi-upload"></i> 批量分析
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-model">
+                    <i class="bi bi-diagram-3"></i> 模型信息
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab 内容 -->
+        <div class="tab-content mt-3" id="mainTabContent">
+
+            <!-- ========== Tab 1: 实时预测 ========== -->
+            <div class="tab-pane fade show active" id="tab-predict">
+                <div class="row">
+                    <div class="col-lg-7">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-pencil-square"></i> 输入金融新闻标题
+                            </div>
+                            <div class="card-body">
+                                <textarea id="predictInput" class="form-control" rows="4"
+                                    placeholder="请输入金融新闻标题，例如：&#10;海能达与非洲某国公共安全客户签订千万美元项目合同&#10;公司预计全年净利润同比增长超过50%&#10;公司收到证监会立案调查通知书"></textarea>
+                                <div class="mt-3 d-flex gap-2">
+                                    <button class="btn btn-primary btn-lg flex-grow-1" onclick="doPredict()">
+                                        <i class="bi bi-search"></i> 分析情感
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="clearPredict()">
+                                        <i class="bi bi-x-circle"></i> 清空
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">快捷示例：</small>
+                                    <span class="badge bg-success example-badge" onclick="setExample('公司预计全年净利润同比增长50%')">利好示例</span>
+                                    <span class="badge bg-danger example-badge" onclick="setExample('公司收到证监会立案调查通知书')">利空示例</span>
+                                    <span class="badge bg-info example-badge" onclick="setExample('海能达与非洲某国公共安全客户签订千万美元项目合同')">中性示例</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 批量输入 -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <i class="bi bi-list-ul"></i> 批量文本输入（每行一条）
+                            </div>
+                            <div class="card-body">
+                                <textarea id="batchInput" class="form-control" rows="5"
+                                    placeholder="每行输入一条新闻标题..."></textarea>
+                                <button class="btn btn-primary mt-3" onclick="doBatchPredict()">
+                                    <i class="bi bi-play"></i> 批量分析
+                                </button>
+                                <div id="batchResults" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <!-- 预测结果卡片 -->
+                        <div class="card" id="resultCard" style="display:none;">
+                            <div class="card-header">
+                                <i class="bi bi-check-circle"></i> 预测结果
+                            </div>
+                            <div class="card-body text-center">
+                                <div id="gaugeChart" style="height:280px;"></div>
+                                <h3 id="resultSentiment" class="mt-2"></h3>
+                                <p id="resultSignal" class="fs-5"></p>
+                                <div class="progress mt-3" style="height: 30px;">
+                                    <div id="resultBarNegative" class="progress-bar bg-danger" style="width:0%">
+                                        消极 0%
+                                    </div>
+                                    <div id="resultBarPositive" class="progress-bar bg-success" style="width:0%">
+                                        积极 0%
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <span class="badge bg-secondary" id="resultConfidence"></span>
+                                    <span class="badge" id="resultLabel"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 预测历史 -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <i class="bi bi-clock-history"></i> 预测历史
+                            </div>
+                            <div class="card-body" style="max-height:350px;overflow-y:auto;">
+                                <div id="predictHistory">
+                                    <p class="text-muted text-center">暂无预测记录</p>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger mt-2" onclick="clearHistory()">
+                                    <i class="bi bi-trash"></i> 清空历史
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 2: 实时新闻 ========== -->
+            <div class="tab-pane fade" id="tab-realtime-news">
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="mb-0"><i class="bi bi-newspaper"></i> 实时金融新闻情感分析</h4>
+                                    <small id="newsFetchTime" class="text-muted"></small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-primary" onclick="fetchRealtimeNews('all')">
+                                        <i class="bi bi-arrow-repeat"></i> 刷新全部
+                                    </button>
+                                    <button class="btn btn-outline-info ms-2" onclick="fetchRealtimeNews('eastmoney')">
+                                        东方财富
+                                    </button>
+                                    <button class="btn btn-outline-info ms-2" onclick="fetchRealtimeNews('sina')">
+                                        新浪财经
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 市场情绪总览 -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h1 id="marketSignalIcon">⏳</h1>
+                                <h4 id="marketSignalText">加载中...</h4>
+                                <small class="text-muted">市场情绪信号</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h1 class="text-success" id="positiveNewsCount">-</h1>
+                                <small class="text-muted">积极新闻数量</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h1 class="text-danger" id="negativeNewsCount">-</h1>
+                                <small class="text-muted">消极新闻数量</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 板块情绪 -->
+                <div class="row mb-3">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">板块情绪热力</div>
+                            <div class="card-body">
+                                <div id="sectorChart" style="height:400px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">市场情绪趋势</div>
+                            <div class="card-body">
+                                <div id="sentimentTrendChart" style="height:400px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 新闻列表 -->
+                <div class="card">
+                    <div class="card-header">
+                        新闻列表
+                        <span class="badge bg-primary ms-2" id="newsTotalBadge">0</span>
+                    </div>
+                    <div class="card-body" style="max-height:600px;overflow-y:auto;">
+                        <div id="newsList">
+                            <p class="text-muted text-center">点击"刷新"获取实时新闻...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 3: 数据看板 ========== -->
+            <div class="tab-pane fade" id="tab-dashboard">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-database fs-1 text-primary"></i>
+                                <h3 id="statTotal">-</h3>
+                                <small class="text-muted">总样本数</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-emoji-smile fs-1 text-success"></i>
+                                <h3 class="text-success" id="statPositive">-</h3>
+                                <small class="text-muted">正面样本</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-emoji-frown fs-1 text-danger"></i>
+                                <h3 class="text-danger" id="statNegative">-</h3>
+                                <small class="text-muted">负面样本</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card">
+                            <div class="card-body text-center">
+                                <i class="bi bi-text-paragraph fs-1 text-info"></i>
+                                <h3 class="text-info" id="statAvgLen">-</h3>
+                                <small class="text-muted">平均长度(字)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-pie-chart"></i> 标签分布</div>
+                            <div class="card-body"><div id="labelPieChart" style="height:350px;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-bar-chart"></i> 文本长度分布</div>
+                            <div class="card-body"><div id="lengthBarChart" style="height:350px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-cloud"></i> 正面新闻词云</div>
+                            <div class="card-body"><div id="positiveWordCloud" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-cloud-rain"></i> 负面新闻词云</div>
+                            <div class="card-body"><div id="negativeWordCloud" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 4: 训练历程 ========== -->
+            <div class="tab-pane fade" id="tab-training">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">训练准确率 & F1 曲线</div>
+                            <div class="card-body"><div id="accuracyChart" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header">训练 Precision & Recall 曲线</div>
+                            <div class="card-body"><div id="prChart" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-grid-3x3-gap"></i> 混淆矩阵</div>
+                            <div class="card-body"><div id="confusionMatrixChart" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-graph-up"></i> ROC 曲线</div>
+                            <div class="card-body"><div id="rocChart" style="height:400px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-bar-chart-steps"></i> 置信度分布</div>
+                            <div class="card-body"><div id="confidenceChart" style="height:350px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 5: 数据集 ========== -->
+            <div class="tab-pane fade" id="tab-dataset">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-table"></i> 数据集浏览</span>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadDatasetPage(1)">
+                                <i class="bi bi-arrow-repeat"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height:600px;overflow-y:auto;">
+                            <table class="table table-hover" id="dataTable">
+                                <thead><tr><th>#</th><th>新闻标题</th><th>标签</th><th>情感预测</th><th>置信度</th></tr></thead>
+                                <tbody id="dataTableBody"></tbody>
+                            </table>
+                        </div>
+                        <nav>
+                            <ul class="pagination justify-content-center" id="dataPagination"></ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 6: 批量分析 ========== -->
+            <div class="tab-pane fade" id="tab-upload">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-cloud-upload"></i> 上传文件</div>
+                            <div class="card-body">
+                                <div class="upload-zone" id="uploadZone"
+                                     ondragover="event.preventDefault()"
+                                     ondrop="handleFileDrop(event)">
+                                    <i class="bi bi-file-earmark-arrow-up fs-1"></i>
+                                    <p class="mt-2">拖拽 CSV/Excel 文件到此处</p>
+                                    <p class="text-muted">或</p>
+                                    <input type="file" id="fileInput" accept=".csv,.xls,.xlsx"
+                                           onchange="handleFileSelect()" hidden>
+                                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                        <i class="bi bi-folder2-open"></i> 选择文件
+                                    </button>
+                                    <p id="fileNameDisplay" class="mt-2 text-muted"></p>
+                                </div>
+                                <button class="btn btn-success w-100 mt-3" onclick="uploadAndAnalyze()">
+                                    <i class="bi bi-play-circle"></i> 开始分析
+                                </button>
+                                <div id="uploadProgress" class="mt-3" style="display:none;">
+                                    <div class="progress"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>
+                                    <p class="text-center mt-2">分析中...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-list-check"></i> 分析结果预览</div>
+                            <div class="card-body">
+                                <div id="uploadResults"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== Tab 7: 模型信息 ========== -->
+            <div class="tab-pane fade" id="tab-model">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-cpu"></i> 模型参数</div>
+                            <div class="card-body">
+                                <table class="table" id="modelParamsTable">
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card">
+                            <div class="card-header"><i class="bi bi-diagram-3"></i> 模型架构</div>
+                            <div class="card-body">
+                                <div class="model-architecture">
+                                    <div class="arch-layer">📝 <strong>Input</strong><br/>Token IDs + Attention Mask</div>
+                                    <div class="arch-arrow">⬇️</div>
+                                    <div class="arch-layer arch-bert">🧠 <strong>BERT-base-chinese</strong><br/>12 Layers, 768 Hidden, 12 Heads<br/>110M Parameters</div>
+                                    <div class="arch-arrow">⬇️</div>
+                                    <div class="arch-layer">🔽 <strong>Pooler Output</strong><br/>768-dim Vector</div>
+                                    <div class="arch-arrow">⬇️</div>
+                                    <div class="arch-layer">🔽 <strong>Dropout</strong><br/>p = 0.1</div>
+                                    <div class="arch-arrow">⬇️</div>
+                                    <div class="arch-layer">🎯 <strong>Linear Classifier</strong><br/>768 → 2 (积极/消极)</div>
+                                    <div class="arch-arrow">⬇️</div>
+                                    <div class="arch-layer">📊 <strong>Softmax</strong><br/>Probability Distribution</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="mt-4 text-center text-muted py-3">
+        <small>基于 BERT 的金融新闻标题情感分析系统 | Powered by PyTorch + Transformers + Flask</small>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/prediction.js') }}"></script>
+    <script>
+        // 页面初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            checkModelStatus();
+            // 预加载看板数据
+            setTimeout(() => {
+                loadDashboardData();
+                loadWordClouds();
+            }, 500);
+        });
+
+        function updateTime() {
+            document.getElementById('currentTime').textContent = new Date().toLocaleString('zh-CN');
+        }
+
+        async function checkModelStatus() {
+            try {
+                const res = await fetch('/api/model/metadata');
+                const data = await res.json();
+                const statusEl = document.getElementById('modelStatus');
+                if (data.model_loaded) {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-success"></i> 模型已就绪 | ' + data.device;
+                } else {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-warning"></i> 使用模拟模式';
+                }
+            } catch (e) {
+                document.getElementById('modelStatus').innerHTML =
+                    '<i class="bi bi-circle-fill text-danger"></i> 服务未连接';
+            }
+        }
+
+        // Tab切换时加载对应数据
+        document.querySelectorAll('#mainTabs button[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function(e) {
+                const target = e.target.getAttribute('data-bs-target');
+                if (target === '#tab-dashboard') {
+                    loadDashboardData();
+                    loadWordClouds();
+                } else if (target === '#tab-training') {
+                    loadTrainingCharts();
+                } else if (target === '#tab-dataset') {
+                    loadDatasetPage(1);
+                } else if (target === '#tab-model') {
+                    loadModelInfo();
+                } else if (target === '#tab-realtime-news') {
+                    fetchRealtimeNews('all');
+                    fetchSectorData();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
