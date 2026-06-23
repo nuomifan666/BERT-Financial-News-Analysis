@@ -35,9 +35,9 @@ body {
 
 /* ========== 导航栏 ========== */
 .navbar {
-    background: #1e293b !important;
-    border-bottom: 1px solid #334155;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: #6b7280 !important;
+    border-bottom: 1px solid #9ca3af;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .navbar .nav-link {

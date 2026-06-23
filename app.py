@@ -26,8 +26,7 @@ from utils.visualization import (
     generate_correlation_heatmap, generate_confidence_distribution,
 )
 from utils.news_fetcher import (
-    fetch_financial_news, fetch_eastmoney_news,
-    get_stock_sectors_summary,
+    fetch_financial_news, get_stock_sectors_summary,
 )
 
 app = Flask(__name__)

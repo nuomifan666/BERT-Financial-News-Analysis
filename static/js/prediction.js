@@ -418,7 +418,7 @@ async function fetchSectorData() {
                 data: scores.map((v, i) => ({
                     value: v,
                     itemStyle: {
-                        color: v > 0.2 ? '#10b981' : v < -0.2 ? '#ef4444' : '#f59e0b'
+                        color: v > 0.2 ? '#ef4444' : v < -0.2 ? '#10b981' : '#f59e0b'
                     }
                 })),
                 barWidth: '60%'

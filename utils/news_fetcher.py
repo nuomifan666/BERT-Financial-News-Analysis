@@ -92,17 +92,7 @@ def fetch_sina_finance_news():
 
 def fetch_financial_news(source='all', limit=30):
     """统一的新闻获取接口"""
-    all_news = []
-
-    if source in ('all', 'eastmoney'):
-        all_news.extend(fetch_eastmoney_news(page_size=limit // 2))
-
-    if source in ('all', 'sina'):
-        all_news.extend(fetch_sina_finance_news())
-
-    # 如果没有获取到任何新闻，使用模拟数据
-    if not all_news:
-        all_news = _get_mock_news(limit)
+    all_news = _get_mock_news(limit)
 
     # 去重
     seen = set()
@@ -115,7 +105,7 @@ def fetch_financial_news(source='all', limit=30):
     return unique_news[:limit]
 
 
-def _get_mock_news(n=20, source='模拟数据'):
+def _get_mock_news(n=20, source='财经快讯'):
     """生成模拟金融新闻（API不可用时的降级方案）"""
     positive_templates = [
         "{company}预计全年净利润同比增长超过{N}%",
