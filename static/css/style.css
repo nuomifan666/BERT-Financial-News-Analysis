@@ -16,7 +16,7 @@
     --accent-purple: #7c3aed;
     --accent-purple-light: #f5f3ff;
     --accent-cyan: #0891b2;
-    --gradient-header: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+    --gradient-header: #1e293b;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
     --radius: 12px;
@@ -35,13 +35,14 @@ body {
 
 /* ========== 导航栏 ========== */
 .navbar {
-    background: var(--gradient-header) !important;
-    border-bottom: 2px solid #1d4ed8;
-    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+    background: #1e293b !important;
+    border-bottom: 1px solid #334155;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .navbar .nav-link {
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 0.85rem;
 }
 
 .navbar .nav-link:hover {
@@ -49,9 +50,10 @@ body {
 }
 
 .navbar-brand {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 1.2rem;
+    font-weight: 600;
     color: #ffffff !important;
+    letter-spacing: 0.5px;
 }
 
 .brand-text {
@@ -100,18 +102,17 @@ body {
 }
 
 .card:hover {
-    box-shadow: var(--shadow-md);
-    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .card-header {
-    background: #f8fafc;
+    background: #fafbfc;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-primary);
     font-weight: 600;
-    padding: 0.75rem 1.2rem;
+    padding: 0.65rem 1.2rem;
     border-radius: 12px 12px 0 0 !important;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .card-body {

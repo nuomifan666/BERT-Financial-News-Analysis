@@ -13,17 +13,17 @@
 </head>
 <body>
     <!-- 顶部导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
                 <i class="bi bi-graph-up-arrow"></i>
-                <span class="brand-text">BERT 金融新闻情感分析系统</span>
+                金融新闻情感分析
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="nav-item nav-link" id="modelStatus">
-                    <i class="bi bi-circle-fill text-warning"></i> 模型加载中...
+                    <i class="bi bi-circle-fill text-success"></i>
                 </span>
-                <span class="nav-item nav-link" id="currentTime"></span>
+                <span class="nav-item nav-link text-muted" id="currentTime"></span>
             </div>
         </div>
     </nav>
@@ -170,13 +170,7 @@
                                 </div>
                                 <div>
                                     <button class="btn btn-primary" onclick="fetchRealtimeNews('all')">
-                                        <i class="bi bi-arrow-repeat"></i> 刷新全部
-                                    </button>
-                                    <button class="btn btn-outline-info ms-2" onclick="fetchRealtimeNews('eastmoney')">
-                                        东方财富
-                                    </button>
-                                    <button class="btn btn-outline-info ms-2" onclick="fetchRealtimeNews('sina')">
-                                        新浪财经
+                                        <i class="bi bi-arrow-repeat"></i> 刷新新闻
                                     </button>
                                 </div>
                             </div>
@@ -465,7 +459,7 @@
 
     <!-- 页脚 -->
     <footer class="mt-4 text-center text-muted py-3">
-        <small>基于 BERT 的金融新闻标题情感分析系统 | Powered by PyTorch + Transformers + Flask</small>
+        <small>BERT 金融新闻标题情感分析</small>
     </footer>
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
@@ -493,13 +487,13 @@
                 const data = await res.json();
                 const statusEl = document.getElementById('modelStatus');
                 if (data.model_loaded) {
-                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-success"></i> 模型已就绪 | ' + data.device;
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-success"></i>';
                 } else {
-                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-warning"></i> 使用模拟模式';
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-warning"></i>';
                 }
             } catch (e) {
                 document.getElementById('modelStatus').innerHTML =
-                    '<i class="bi bi-circle-fill text-danger"></i> 服务未连接';
+                    '<i class="bi bi-circle-fill text-danger"></i>';
             }
         }
 
