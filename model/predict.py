@@ -9,31 +9,48 @@ import os
 # 项目根目录
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_DIR = os.path.join(BASE_DIR, 'model', 'saved')
+
+# 你的 Hugging Face Hub 模型 ID（上传后替换）
+HF_MODEL_ID = "nuomifan666/bert-finance-sentiment"
+
 MAX_SEQ_LEN = 128
 
 
 class SentimentPredictor:
     """情感分析预测器"""
 
-    def __init__(self, model_dir=None):
-        """初始化预测器"""
+    def __init__(self, model_dir=None, hf_model_id=None):
+        """初始化预测器，优先本地模型，其次从 HF Hub 加载"""
         if model_dir is None:
             model_dir = MODEL_DIR
+        if hf_model_id is None:
+            hf_model_id = HF_MODEL_ID
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        model_path = None
+
         if os.path.exists(model_dir):
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+            model_path = model_dir
+        else:
+            try:
+                print(f"本地模型未找到，从 HuggingFace Hub 加载: {hf_model_id}")
+                model_path = hf_model_id
+            except Exception:
+                pass
+
+        if model_path:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_path)
             self.model.to(self.device)
             self.model.eval()
             self.loaded = True
-            print(f"✅ 模型加载成功 | 设备: {self.device}")
+            print(f"模型加载成功 | 设备: {self.device}")
             if torch.cuda.is_available():
                 print(f"   GPU: {torch.cuda.get_device_name(0)}")
         else:
             self.loaded = False
-            print(f"⚠️  模型未找到: {model_dir}")
+            print(f"模型未找到: {model_dir}")
             print("   请先运行 model/train.py 训练模型")
 
     def predict(self, texts):

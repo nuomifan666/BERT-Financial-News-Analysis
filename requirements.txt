@@ -1,0 +1,13 @@
+torch
+transformers
+flask
+pandas
+matplotlib
+seaborn
+jieba
+wordcloud
+plotly
+scikit-learn
+openpyxl
+tqdm
+huggingface_hub
