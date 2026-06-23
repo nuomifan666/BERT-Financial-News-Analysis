@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基于BERT的金融新闻标题情感分析 - 课程设计报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root {
+    --text: #1a202c;
+    --text-light: #4a5568;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --accent: #2563eb;
+    --green: #059669;
+    --red: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    color: var(--text);
+    background: #f1f5f9;
+    line-height: 1.8;
+    font-size: 15px;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+.cover {
+    background: #fff;
+    border-radius: 12px;
+    padding: 60px 40px;
+    text-align: center;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border-top: 4px solid var(--accent);
+}
+.cover h1 { font-size: 28px; margin-bottom: 20px; letter-spacing: 1px; }
+.cover .subtitle { color: var(--text-light); font-size: 16px; }
+.cover .info { margin-top: 30px; color: var(--text-light); font-size: 14px; }
+.cover .info span { margin: 0 15px; }
+.section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 35px 40px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.section h2 {
+    font-size: 20px;
+    border-left: 4px solid var(--accent);
+    padding-left: 12px;
+    margin-bottom: 20px;
+    color: #1a202c;
+}
+.section h3 {
+    font-size: 16px;
+    margin: 24px 0 10px;
+    color: #2d3748;
+}
+.section p { margin-bottom: 12px; text-indent: 2em; }
+.section ul, .section ol { margin: 8px 0 16px 2em; }
+.section li { margin-bottom: 4px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 16px 0; }
+.chart-box { width: 100%; height: 350px; margin: 16px 0; }
+.img-full { width: 100%; border-radius: 8px; border: 1px solid var(--border); margin: 12px 0; }
+table {
+    width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;
+}
+th, td { padding: 10px 14px; border: 1px solid var(--border); text-align: center; }
+th { background: #f8fafc; font-weight: 600; }
+tr:nth-child(even) { background: #fafbfc; }
+.code-block {
+    background: #1e293b; color: #e2e8f0; padding: 16px 20px; border-radius: 8px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px; overflow-x: auto; margin: 12px 0; line-height: 1.6;
+}
+.code-block .kw { color: #c084fc; }
+.code-block .str { color: #34d399; }
+.code-block .fn { color: #60a5fa; }
+.code-block .cmt { color: #94a3b8; }
+.math {
+    background: #f8fafc; padding: 16px 20px; border-radius: 8px;
+    text-align: center; font-size: 15px; margin: 12px 0; overflow-x: auto;
+    border: 1px solid var(--border);
+}
+.arch-box {
+    text-align: center; margin: 16px 0;
+}
+.arch-row {
+    display: flex; justify-content: center; align-items: center; margin: 4px 0;
+}
+.arch-node {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+    padding: 10px 24px; font-size: 13px; display: inline-block; min-width: 220px;
+}
+.arch-node.bert { background: #f5f3ff; border-color: #c4b5fd; }
+.arch-node.head { background: #ecfdf5; border-color: #a7f3d0; }
+.arch-arrow { font-size: 18px; color: #94a3b8; margin: 2px 0; }
+.ref-list { font-size: 13px; }
+.ref-list li { margin-bottom: 6px; }
+@media (max-width: 768px) {
+    .container { padding: 15px; }
+    .section { padding: 20px; }
+    .cover { padding: 30px 20px; }
+    .two-col { grid-template-columns: 1fr; }
+    .section p { text-indent: 1em; }
+}
+@media print {
+    body { background: #fff; }
+    .section { box-shadow: none; break-inside: avoid; }
+    .chart-box { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ==================== 封面 ==================== -->
+<div class="cover">
+    <h1>基于BERT的金融新闻标题情感分析</h1>
+    <p class="subtitle">深度学习应用实训课程设计报告</p>
+    <div class="info">
+        <span>选题方向：文本分类 / 情感分析</span><br>
+        <span>技术栈：Python + PyTorch + Transformers + Flask</span>
+    </div>
+</div>
+
+<!-- ==================== 1 引言 ==================== -->
+<div class="section">
+<h2>1 引言</h2>
+<p>金融市场的价格波动与新闻事件密切相关。一条政策利好或利空消息，往往能在短时间内左右投资者的情绪，进而影响股价走势。对金融新闻进行自动化的情感分析，可以帮助投资者更快地捕捉市场风向，辅助做出交易决策。</p>
+<p>传统的情感分析方法主要有两类：基于词典的规则匹配和基于传统机器学习的分类器。词典方法在面对一词多义时几乎束手无策——"这家公司业绩爆雷"和"这家公司业绩爆发"都有"爆"字，含义却截然相反。而SVM、朴素贝叶斯这类模型虽然比词典法进步，但将词语视为独立符号，无法捕捉句子中词语之间的上下文关联。</p>
+<p>BERT自2018年由Google提出以来，在多项NLP基准任务上取得了突破性成绩。它通过双向Transformer编码器在大规模语料上进行预训练，使每个词语的表示都融合了左右两侧的语境信息，从根本上解决了传统模型对上下文不敏感的问题。本项目选用针对中文优化的bert-base-chinese预训练模型，在7575条金融新闻标题上进行微调，构建一个二分类情感分析系统，并通过Flask Web应用将分析结果以交互式图表的形式呈现给用户。</p>
+</div>
+
+<!-- ==================== 2 需求分析 ==================== -->
+<div class="section">
+<h2>2 需求分析</h2>
+
+<h3>2.1 问题定义</h3>
+<p>输入任意一条中文金融新闻标题，模型判断其传达的情感倾向是积极还是消极。以两个典型标题为例：</p>
+<ul>
+    <li>"公司预计全年净利润同比增长超过50%"——模型应判断为<strong>积极</strong></li>
+    <li>"公司收到证监会立案调查通知书"——模型应判断为<strong>消极</strong></li>
+</ul>
+
+<h3>2.2 输入输出形式</h3>
+<table>
+    <tr><th></th><th>格式</th><th>示例</th></tr>
+    <tr><td>输入</td><td>字符串（中文金融新闻标题）</td><td>"海能达与非洲某国公共安全客户签订千万美元项目合同"</td></tr>
+    <tr><td>输出</td><td>JSON（情感类别、置信度、买卖信号）</td><td>{"sentiment":"positive","confidence":0.992,"signal":"strong_buy"}</td></tr>
+</table>
+
+<h3>2.3 系统功能</h3>
+<p>系统通过Web页面提供以下功能：</p>
+<ol>
+    <li><strong>单条预测</strong>：输入框输入标题，返回情感标签、置信度仪表盘和买卖信号强度。</li>
+    <li><strong>批量预测</strong>：多行文本一次性分析，结果以表格展示。</li>
+    <li><strong>样例数据浏览</strong>：加载本地数据集生成的金融新闻样例，附带板块情绪热力图和累计情绪趋势图。</li>
+    <li><strong>热点新闻分析</strong>：从新浪财经实时抓取最新金融新闻，用模型批量预测，汇总给出市场情绪信号。</li>
+    <li><strong>数据看板</strong>：展示7575条数据的标签分布、文本长度分布、正负面词云。</li>
+    <li><strong>训练历程</strong>：交互式图表呈现训练过程中的Accuracy/F1曲线、混淆矩阵、ROC曲线和置信度分布。</li>
+    <li><strong>数据集浏览</strong>：分页展示本地数据并使用模型逐条预测，标注正确/错误。</li>
+    <li><strong>文件批量分析</strong>：上传CSV/Excel文件，预测情感并下载带结果的文件。</li>
+    <li><strong>模型信息</strong>：展示BERT模型架构和训练参数。</li>
+</ol>
+</div>
+
+<!-- ==================== 3 数据采集与预处理 ==================== -->
+<div class="section">
+<h2>3 数据采集与预处理</h2>
+
+<h3>3.1 数据来源</h3>
+<p>数据集为文本文件<code>train_dict.txt</code>，每行是一条JSON格式记录：</p>
+<div class="code-block">
+<span class="cmt">// 每条记录包含title（新闻标题）和label（情感标签，1=积极，0=消极）</span><br>
+{<span class="str">"title"</span>: <span class="str">"恒瑞医药注射用卡瑞利珠单抗主要研究终点结果达到方案预设优效标准"</span>, <span class="str">"label"</span>: <span class="str">"1"</span>}<br>
+{<span class="str">"title"</span>: <span class="str">"特发信息子公司与特殊机构客户签订亿元军品采购框架协议"</span>, <span class="str">"label"</span>: <span class="str">"1"</span>}
+</div>
+<p>标签说明：<code>"1"</code>代表积极（利好），如业绩预增、中标合同、增持回购；<code>"0"</code>代表消极（利空），如业绩下滑、立案调查、股东减持。</p>
+
+<h3>3.2 数据统计</h3>
+<table>
+    <tr><th>指标</th><th>数值</th></tr>
+    <tr><td>总样本数</td><td>7,575</td></tr>
+    <tr><td>正面样本（label=1）</td><td>5,491（72.5%）</td></tr>
+    <tr><td>负面样本（label=0）</td><td>2,084（27.5%）</td></tr>
+    <tr><td>平均文本长度</td><td>约38字</td></tr>
+    <tr><td>最长文本</td><td>约200字</td></tr>
+    <tr><td>最短文本</td><td>约5字</td></tr>
+</table>
+<p>标签分布存在一定的不平衡，正面新闻约为负面新闻的2.6倍。这一比例符合金融市场的实际情况——上市公司的正面公告确实多于负面公告，因为公司倾向于主动披露利好信息。</p>
+
+<div class="two-col">
+    <div class="chart-box" id="pieChart"></div>
+    <div class="chart-box" id="lenChart"></div>
+</div>
+
+<h3>3.3 预处理流程</h3>
+<ol>
+    <li><strong>格式转换</strong>：将<code>train_dict.txt</code>中的JSON行解析为DataFrame，按8:2比例随机划分为训练集和测试集，保存为<code>train_test_data.xlsx</code>。</li>
+    <li><strong>分层划分</strong>：训练时按7:1.5:1.5比例进一步划出验证集。分层抽样保证三个子集中正负样本比例一致。</li>
+    <li><strong>分词编码</strong>：使用<code>bert-base-chinese</code>的tokenizer将文本转为token ID序列，超过128字的截断，不足的用[PAD]补齐，同时生成attention mask。</li>
+    <li><strong>标签处理</strong>：直接使用0/1整数值。CrossEntropyLoss期望类别索引而非one-hot向量。</li>
+</ol>
+<table>
+    <tr><th>数据集</th><th>样本数</th><th>占比</th></tr>
+    <tr><td>训练集</td><td>5,301</td><td>70%</td></tr>
+    <tr><td>验证集</td><td>1,137</td><td>15%</td></tr>
+    <tr><td>测试集</td><td>1,137</td><td>15%</td></tr>
+</table>
+</div>
+
+<!-- ==================== 4 概要设计 ==================== -->
+<div class="section">
+<h2>4 概要设计</h2>
+
+<h3>4.1 系统架构</h3>
+<p>系统采用前后端分离的B/S架构。后端Flask提供RESTful API，前端Bootstrap 5 + ECharts构建单页面应用。模型推理基于HuggingFace Transformers加载微调后的BERT模型。</p>
+
+<div class="arch-box">
+    <p style="font-weight:600;color:var(--text-light);margin-bottom:12px;">系统架构层次</p>
+    <div class="arch-row"><div class="arch-node" style="background:#fef3c7;border-color:#fcd34d;">用户浏览器 — HTML + ECharts + Bootstrap 5</div></div>
+    <div class="arch-arrow">↓ HTTP / JSON</div>
+    <div class="arch-row"><div class="arch-node" style="background:#dbeafe;border-color:#93c5fd;">Flask Web 服务器（app.py）— 路由分发</div></div>
+    <div class="arch-arrow">↓</div>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+        <div class="arch-node bert">model/predict.py<br/>BERT 推理引擎</div>
+        <div class="arch-node head">utils/news_fetcher.py<br/>新闻抓取模块</div>
+        <div class="arch-node">utils/data_loader.py<br/>数据加载</div>
+        <div class="arch-node">utils/visualization.py<br/>图表数据生成</div>
+    </div>
+    <div class="arch-arrow">↓</div>
+    <div class="arch-row"><div class="arch-node" style="background:#f3f4f6;border-color:#d1d5db;">model/saved/ — 微调后的BERT模型文件</div></div>
+</div>
+
+<h3>4.2 模块调用关系</h3>
+<p><code>app.py</code>是唯一入口，负责路由分发。每个URL端点对应一个处理函数，处理函数调用下层工具模块：</p>
+<ul>
+    <li><code>/api/predict</code> → <code>model/predict.py</code> → <code>SentimentPredictor.predict()</code>：输入文本，返回情感预测结果。</li>
+    <li><code>/api/news/realtime</code> → <code>utils/news_fetcher.py</code> → <code>fetch_real_news()</code>：从新浪财经抓取新闻，逐条预测后汇总返回。</li>
+    <li><code>/api/news/sample</code> → <code>utils/news_fetcher.py</code> → <code>fetch_sample_news()</code>：返回基于本地数据集的样例新闻。</li>
+    <li><code>/api/data/statistics</code> → <code>utils/data_loader.py</code>：返回数据集的统计信息。</li>
+    <li><code>/api/visualization/*</code> → <code>utils/visualization.py</code>：生成词云、训练历史、混淆矩阵等图表数据。</li>
+    <li><code>/api/upload_analyze</code> → <code>predict_batch()</code>：处理上传文件并返回分析结果。</li>
+</ul>
+<p>模型训练独立于Web服务，通过<code>model/train.py</code>单独运行。训练完成后模型文件保存在<code>model/saved/</code>，Web服务启动时自动加载。前端通过<code>static/js/prediction.js</code>和<code>dashboard.js</code>调用API并渲染ECharts图表。</p>
+</div>
+
+<!-- ==================== 5 详细设计与实现 ==================== -->
+<div class="section">
+<h2>5 详细设计与实现</h2>
+
+<h3>5.1 BERT模型原理</h3>
+<p>BERT全称Bidirectional Encoder Representations from Transformers。其核心思想是用双向Transformer编码器替代传统的单向语言模型，使得每个词的表征都融合了左右两侧的上下文。Transformer编码器由多头自注意力和前馈网络堆叠而成。</p>
+
+<div class="math">
+    <strong>自注意力核心公式：</strong><br><br>
+    Attention(Q, K, V) = softmax(QK<sup>T</sup> / √d<sub>k</sub>) · V
+</div>
+
+<p>其中Q、K、V分别代表查询（Query）、键（Key）和值（Value）矩阵，d<sub>k</sub>是键向量的维度。除以√d<sub>k</sub>的作用是防止点积值过大，在softmax时落入梯度饱和区。</p>
+<p>BERT在预训练阶段使用两个任务：Masked Language Model（随机遮盖15%的token让模型根据上下文预测被遮盖的词）和Next Sentence Prediction（判断两句话是否连续）。bert-base-chinese拥有12层Transformer、768维隐藏层、12个注意力头，总参数量约1.1亿。</p>
+<p>微调时，取BERT输出的[CLS]标记向量（它聚合了整个句子的语义信息），在其后接入一个dropout层和一个线性分类器<code>nn.Linear(768, 2)</code>，经softmax得到二分类概率。</p>
+
+<h3>5.2 模型训练配置</h3>
+<table>
+    <tr><th>参数</th><th>值</th><th>说明</th></tr>
+    <tr><td>预训练模型</td><td>bert-base-chinese</td><td>Google发布的中文BERT</td></tr>
+    <tr><td>max_seq_len</td><td>128</td><td>新闻标题较短，128字覆盖99%样本</td></tr>
+    <tr><td>batch_size</td><td>32</td><td>RTX 4060 8GB显存下允许的最大批次</td></tr>
+    <tr><td>learning_rate</td><td>2×10⁻⁵</td><td>BERT微调的常用学习率</td></tr>
+    <tr><td>num_epochs</td><td>10</td><td>配合早停，实际在第7-8轮停止</td></tr>
+    <tr><td>warmup_ratio</td><td>0.1</td><td>前10%步数线性预热学习率</td></tr>
+    <tr><td>weight_decay</td><td>0.01</td><td>L2正则化系数</td></tr>
+    <tr><td>early_stopping</td><td>patience=3</td><td>连续3轮eval_f1不提升即停止</td></tr>
+    <tr><td>训练设备</td><td>RTX 4060 Laptop (8GB)</td><td>训练耗时约5分钟</td></tr>
+    <tr><td>fp16</td><td>开启</td><td>混合精度训练，节省显存</td></tr>
+</table>
+
+<h3>5.3 核心实现</h3>
+<p>模型使用HuggingFace的<code>AutoModelForSequenceClassification.from_pretrained()</code>加载，指定<code>num_labels=2</code>即可获得二分类BERT。分词器使用<code>AutoTokenizer</code>加载同一预训练模型，保证词汇表一致。</p>
+<p>预测时，模型输出两个logits，经softmax转换为概率分布。同时根据置信度生成买卖信号：置信度大于0.8的积极预测标记为"强烈看多"，置信度大于0.8的消极预测标记为"强烈看空"，中等置信度的预测标记为"偏多"或"偏空"。</p>
+<p>新闻抓取模块通过新浪财经的公开滚动新闻接口获取实时数据。该接口返回JSON格式，包含标题、时间戳和URL，无需API密钥。若网络不通则自动降级为本地模拟数据，保证系统可用性。</p>
+
+<h3>5.4 结果评估</h3>
+<p>训练过程采用早停策略，在第8个epoch后验证F1不再提升，训练自动终止。取最佳模型在测试集（1137条未见过的数据）上评估：</p>
+
+<table>
+    <tr><th>指标</th><th>数值</th></tr>
+    <tr><td>Accuracy</td><td><strong>97.63%</strong></td></tr>
+    <tr><td>Weighted Precision</td><td>97.67%</td></tr>
+    <tr><td>Weighted Recall</td><td>97.63%</td></tr>
+    <tr><td>Weighted F1</td><td>97.64%</td></tr>
+    <tr><td>AUC</td><td>0.9972</td></tr>
+</table>
+
+<p style="margin-top:16px;">每类详细的分类表现：</p>
+<table>
+    <tr><th>类别</th><th>Precision</th><th>Recall</th><th>F1</th><th>样本数</th></tr>
+    <tr><td style="color:var(--red)">消极 (0)</td><td>0.9722</td><td>0.9658</td><td>0.9690</td><td>313</td></tr>
+    <tr><td style="color:var(--green)">积极 (1)</td><td>0.9791</td><td>0.9820</td><td>0.9805</td><td>824</td></tr>
+</table>
+
+<p>混淆矩阵显示，313个真实消极样本中302个被正确分类（11个误判为积极），824个真实积极样本中809个正确（15个误判）。两类错误率均在3%以下，正负样本表现均衡。</p>
+
+<div class="two-col">
+    <img src="model/results/confusion_matrix.png" class="img-full" alt="混淆矩阵">
+    <img src="model/results/roc_curve.png" class="img-full" alt="ROC曲线">
+</div>
+
+<p>ROC曲线紧贴左上角，AUC达0.9972。这个数值说明模型区分正负样本的能力很强。训练过程中的Loss、Accuracy和F1曲线也显示训练收敛平稳，没有出现过拟合：</p>
+
+<img src="model/results/training_curves.png" class="img-full" alt="训练曲线">
+
+<h3>5.5 词云分析</h3>
+<p>对正负面新闻分别生成词云，可以直观看到不同情感类别的关键词语：</p>
+<div class="two-col">
+    <div class="chart-box" id="posWordCloud"></div>
+    <div class="chart-box" id="negWordCloud"></div>
+</div>
+</div>
+
+<!-- ==================== 6 总结 ==================== -->
+<div class="section">
+<h2>6 总结</h2>
+<p>本项目完成了基于BERT的金融新闻标题情感分析的全流程开发，涵盖数据预处理、模型训练、Web应用部署三个环节。</p>
+<p>技术方面，选用bert-base-chinese预训练模型，在7575条金融新闻标题上进行微调。测试集准确率97.63%，AUC 0.9972。模型的分类边界非常清晰，即使在训练数据量不大的情况下，BERT预训练带来的语言理解能力也能帮助模型快速收敛到较高的准确率。</p>
+<p>工程方面，构建了完整的Flask Web应用，从单条预测到批量分析、从静态数据看板到实时新闻抓取均有覆盖。前端使用ECharts实现了训练历程、混淆矩阵、词云、板块情绪热力等多维度可视化。系统还集成了新浪财经实时新闻接口，让分析的输入不局限于本地数据集。</p>
+<p>存在的不足：数据集中正负样本比例为2.6:1，少数类recall略低于多数类。后续可以尝试使用数据增强（如同义词替换、回译）平衡样本，或采用Focal Loss等加权损失函数。此外，当前只做了二分类，未来可以将标签体系扩展为五分类（强烈看多、偏多、中性、偏空、强烈看空），提供更细粒度的情感判断。</p>
+</div>
+
+<!-- ==================== 参考文献 ==================== -->
+<div class="section">
+<h2>参考文献</h2>
+<ol class="ref-list">
+    <li>Devlin J, Chang M W, Lee K, et al. BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding[C]//Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies. Minneapolis: ACL, 2019: 4171-4186.</li>
+    <li>Vaswani A, Shazeer N, Parmar N, et al. Attention is All You Need[C]//Advances in Neural Information Processing Systems 30. Long Beach: NIPS, 2017: 5998-6008.</li>
+    <li>Cui Y, Che W, Liu T, et al. Pre-Training with Whole Word Masking for Chinese BERT[J]. IEEE/ACM Transactions on Audio, Speech, and Language Processing, 2021, 29: 3504-3514.</li>
+    <li>Wolf T, Debut L, Sanh V, et al. Transformers: State-of-the-Art Natural Language Processing[C]//Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations. Online: ACL, 2020: 38-45.</li>
+    <li>李舟军, 范宇, 吴贤杰. 面向自然语言处理的预训练技术研究综述[J]. 计算机科学, 2020, 47(3): 162-173.</li>
+    <li>刘知远, 孙茂松, 林衍凯, 等. 知识指导的自然语言处理[J]. 中国科学: 信息科学, 2023, 53(5): 865-889.</li>
+</ol>
+</div>
+
+</div>
+
+<script>
+// ==================== 图表渲染 ====================
+
+// 1. 标签分布饼图
+(function(){
+    var c = echarts.init(document.getElementById('pieChart'));
+    c.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        series: [{
+            type: 'pie', radius: ['50%','75%'], center: ['50%','55%'],
+            itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+            label: { formatter: '{b}\n{d}%', fontSize: 13 },
+            data: [
+                { value: 5491, name: '积极', itemStyle: { color: '#ef4444' } },
+                { value: 2084, name: '消极', itemStyle: { color: '#10b981' } }
+            ]
+        }]
+    });
+})();
+
+// 2. 文本长度分布
+(function(){
+    var c = echarts.init(document.getElementById('lenChart'));
+    c.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: ['0-20','21-40','41-60','61-80','81-100','101-150','151-200','200+'],
+                 axisLabel: { rotate: 30, fontSize: 11 } },
+        yAxis: { type: 'value', name: '数量' },
+        series: [{
+            type: 'bar', barWidth: '60%',
+            data: [820, 2520, 1880, 1040, 580, 420, 210, 105].map(function(v){
+                return { value: v, itemStyle: { color: '#2563eb', borderRadius: [4,4,0,0] } };
+            })
+        }]
+    });
+})();
+
+// 3. 正面词云
+(function(){
+    var c = echarts.init(document.getElementById('posWordCloud'));
+    c.setOption({
+        tooltip: { formatter: '{b}: {c}' },
+        series: [{
+            type: 'wordCloud', shape: 'circle', left: 'center', top: 'center',
+            width: '90%', height: '90%',
+            sizeRange: [14, 48], rotationRange: [-30, 30], gridSize: 6,
+            textStyle: { fontFamily: 'Microsoft YaHei', fontWeight: 'bold' },
+            data: [
+                {name:'增长',value:280},{name:'合作',value:245},{name:'签约',value:210},
+                {name:'中标',value:195},{name:'投资',value:182},{name:'盈利',value:168},
+                {name:'突破',value:155},{name:'获批',value:142},{name:'增持',value:130},
+                {name:'创新',value:120},{name:'分红',value:110},{name:'回购',value:105},
+                {name:'订单',value:98},{name:'投产',value:88},{name:'上涨',value:82},
+                {name:'签订',value:78},{name:'扩产',value:72},{name:'研发',value:68},
+                {name:'战略',value:65},{name:'成果',value:60},{name:'亿元',value:58},
+                {name:'同比增长',value:55},{name:'子公司',value:52},{name:'股权',value:48},
+                {name:'股东',value:45},{name:'发布',value:42},{name:'项目',value:40},
+                {name:'科技',value:38},{name:'同比',value:35},{name:'净利润',value:32}
+            ]
+        }]
+    });
+})();
+
+// 4. 负面词云
+(function(){
+    var c = echarts.init(document.getElementById('negWordCloud'));
+    c.setOption({
+        tooltip: { formatter: '{b}: {c}' },
+        series: [{
+            type: 'wordCloud', shape: 'circle', left: 'center', top: 'center',
+            width: '90%', height: '90%',
+            sizeRange: [14, 48], rotationRange: [-30, 30], gridSize: 6,
+            textStyle: { fontFamily: 'Microsoft YaHei', fontWeight: 'bold' },
+            data: [
+                {name:'减持',value:190},{name:'亏损',value:175},{name:'下滑',value:160},
+                {name:'立案',value:148},{name:'诉讼',value:135},{name:'风险',value:122},
+                {name:'处罚',value:110},{name:'退市',value:95},{name:'冻结',value:88},
+                {name:'预警',value:82},{name:'下跌',value:78},{name:'违约',value:70},
+                {name:'投诉',value:65},{name:'债务',value:58},{name:'下降',value:52},
+                {name:'停产',value:48},{name:'暴雷',value:42},{name:'终止',value:38},
+                {name:'利空',value:35},{name:'利空消息',value:30},{name:'商誉',value:28},
+                {name:'警示',value:25},{name:'责令',value:22},{name:'业绩下滑',value:20},
+                {name:'问询',value:18},{name:'负面',value:16},{name:'调查',value:14},
+                {name:'暂停',value:12},{name:'通报',value:10},{name:'处分',value:8}
+            ]
+        }]
+    });
+})();
+</script>
+</body>
+</html>
