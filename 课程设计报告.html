@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>基于BERT的金融新闻标题情感分析 - 课程设计报告</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
 <style>
 :root {
     --text: #1a202c;
@@ -361,8 +362,8 @@ tr:nth-child(even) { background: #fafbfc; }
             itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
             label: { formatter: '{b}\n{d}%', fontSize: 13 },
             data: [
-                { value: 5491, name: '积极', itemStyle: { color: '#ef4444' } },
-                { value: 2084, name: '消极', itemStyle: { color: '#10b981' } }
+                { value: 5491, name: 'Positive', itemStyle: { color: '#ef4444' } },
+                { value: 2084, name: 'Negative', itemStyle: { color: '#10b981' } }
             ]
         }]
     });
@@ -376,7 +377,7 @@ tr:nth-child(even) { background: #fafbfc; }
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'category', data: ['0-20','21-40','41-60','61-80','81-100','101-150','151-200','200+'],
                  axisLabel: { rotate: 30, fontSize: 11 } },
-        yAxis: { type: 'value', name: '数量' },
+        yAxis: { type: 'value', name: 'Count' },
         series: [{
             type: 'bar', barWidth: '60%',
             data: [820, 2520, 1880, 1040, 580, 420, 210, 105].map(function(v){
