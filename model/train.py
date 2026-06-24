@@ -254,7 +254,7 @@ def train_model():
     predictions = trainer.predict(test_dataset)
     y_pred = predictions.predictions.argmax(-1)
     y_prob = predictions.predictions
-    print("\n" + classification_report(y_test, y_pred, target_names=['消极', '积极'], digits=4))
+    print("\n" + classification_report(y_test, y_pred, target_names=['Negative', 'Positive'], digits=4))
 
     # ==================== 保存训练历史和可视化 ====================
     print("\n📈 生成可视化图表...")
@@ -304,9 +304,9 @@ def save_all_visualizations(trainer, train_result, y_test, y_pred, y_prob):
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     # Loss
-    axes[0].plot(train_steps, train_losses, 'b-', label='训练Loss', alpha=0.7)
-    axes[0].plot(eval_steps, eval_losses, 'r-o', label='验证Loss', markersize=4)
-    axes[0].set_title('训练 & 验证 Loss', fontsize=14, fontweight='bold')
+    axes[0].plot(train_steps, train_losses, 'b-', label='Train Loss', alpha=0.7)
+    axes[0].plot(eval_steps, eval_losses, 'r-o', label='Val Loss', markersize=4)
+    axes[0].set_title('Train & Val Loss', fontsize=14, fontweight='bold')
     axes[0].set_xlabel('Steps')
     axes[0].set_ylabel('Loss')
     axes[0].legend()
@@ -314,14 +314,14 @@ def save_all_visualizations(trainer, train_result, y_test, y_pred, y_prob):
 
     # Accuracy
     axes[1].plot(eval_steps, eval_accs, 'g-o', markersize=4)
-    axes[1].set_title('验证准确率', fontsize=14, fontweight='bold')
+    axes[1].set_title('Val Accuracy', fontsize=14, fontweight='bold')
     axes[1].set_xlabel('Steps')
     axes[1].set_ylabel('Accuracy')
     axes[1].grid(True, alpha=0.3)
 
     # F1
     axes[2].plot(eval_steps, eval_f1s, 'purple', marker='o', markersize=4)
-    axes[2].set_title('验证 F1 Score', fontsize=14, fontweight='bold')
+    axes[2].set_title('Val F1 Score', fontsize=14, fontweight='bold')
     axes[2].set_xlabel('Steps')
     axes[2].set_ylabel('F1')
     axes[2].grid(True, alpha=0.3)
@@ -334,12 +334,12 @@ def save_all_visualizations(trainer, train_result, y_test, y_pred, y_prob):
     cm = confusion_matrix(y_test, y_pred)
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=['消极', '积极'],
-                yticklabels=['消极', '积极'],
+                xticklabels=['Negative', 'Positive'],
+                yticklabels=['Negative', 'Positive'],
                 annot_kws={'fontsize': 20})
-    ax.set_title('混淆矩阵', fontsize=16, fontweight='bold')
-    ax.set_xlabel('预测标签', fontsize=12)
-    ax.set_ylabel('真实标签', fontsize=12)
+    ax.set_title('Confusion Matrix', fontsize=16, fontweight='bold')
+    ax.set_xlabel('Predicted', fontsize=12)
+    ax.set_ylabel('Actual', fontsize=12)
     plt.tight_layout()
     plt.savefig(os.path.join(cfg.result_dir, 'confusion_matrix.png'), dpi=150, bbox_inches='tight')
     plt.close()
@@ -351,9 +351,9 @@ def save_all_visualizations(trainer, train_result, y_test, y_pred, y_prob):
 
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.plot(fpr, tpr, 'b-', linewidth=2, label=f'ROC (AUC = {auc:.4f})')
-        ax.plot([0, 1], [0, 1], 'r--', linewidth=1, label='随机分类器')
+        ax.plot([0, 1], [0, 1], 'r--', linewidth=1, label='Random')
         ax.fill_between(fpr, tpr, alpha=0.3)
-        ax.set_title('ROC 曲线', fontsize=16, fontweight='bold')
+        ax.set_title('ROC Curve', fontsize=16, fontweight='bold')
         ax.set_xlabel('False Positive Rate', fontsize=12)
         ax.set_ylabel('True Positive Rate', fontsize=12)
         ax.legend(fontsize=12)
@@ -368,12 +368,12 @@ def save_all_visualizations(trainer, train_result, y_test, y_pred, y_prob):
     fig, ax = plt.subplots(figsize=(10, 5))
     pos_probs = y_prob[y_test == 1, 1]
     neg_probs = y_prob[y_test == 0, 1]
-    ax.hist(pos_probs, bins=30, alpha=0.6, label='正面新闻', color='green', edgecolor='black')
-    ax.hist(neg_probs, bins=30, alpha=0.6, label='负面新闻', color='red', edgecolor='black')
-    ax.axvline(x=0.5, color='black', linestyle='--', linewidth=1, label='决策边界')
-    ax.set_title('预测概率分布', fontsize=14, fontweight='bold')
-    ax.set_xlabel('预测为正面的概率')
-    ax.set_ylabel('频数')
+    ax.hist(pos_probs, bins=30, alpha=0.6, label='Positive', color='green', edgecolor='black')
+    ax.hist(neg_probs, bins=30, alpha=0.6, label='Negative', color='red', edgecolor='black')
+    ax.axvline(x=0.5, color='black', linestyle='--', linewidth=1, label='Decision Boundary')
+    ax.set_title('Probability Distribution', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Probability of Positive')
+    ax.set_ylabel('Count')
     ax.legend()
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
